@@ -70,8 +70,20 @@ SQL
 done
 
 # A playlist com token aponta para /play/<token>, formato que o LB2 nao decodifica.
-mysql ${DB} -e "UPDATE settings SET encrypt_playlist=0, encrypt_playlist_restreamer=0;"
-echo "  ok  playlist sem criptografia"
+#
+# Isto e uma configuracao GLOBAL do painel, entao so mexemos nela ao converter o
+# principal (sem argumento). Ao liberar um LB o script e chamado pelo
+# deploy-lb.sh, que por decisao de projeto nao altera o painel: mudar uma opcao
+# global de dentro de um comando que o admin acha que so mexe num LB e o tipo de
+# efeito colateral silencioso que ja derrubou servidor aqui. Nesse caso, avisa.
+if [ -z "$LB_IP" ]; then
+    mysql ${DB} -e "UPDATE settings SET encrypt_playlist=0, encrypt_playlist_restreamer=0;"
+    echo "  ok  playlist sem criptografia"
+elif [ "$(mysql ${DB} -N -e "SELECT COALESCE(MAX(encrypt_playlist),0) FROM settings;" 2>/dev/null || echo 0)" != "0" ]; then
+    echo "  !!  encrypt_playlist esta LIGADO no painel."
+    echo "      O LB2 nao decodifica /play/<token>, entao este LB nao vai entregar."
+    echo "      Desligue em Settings, ou rode neste principal: ./grant-lb.sh"
+fi
 
 PORT="$(mysql -N -e "SELECT @@port;")"
 TOKEN="$(printf '{"h":"%s","P":%s,"d":"%s","u":"lb2","p":"%s"}' \

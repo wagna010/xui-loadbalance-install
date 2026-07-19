@@ -84,6 +84,28 @@ principal, então nada muda para quem assiste.
 os LBs responsáveis por um canal caírem, o canal fica fora do ar — o tráfego
 nunca é desviado para o principal por conta própria.
 
+## Conviver com LBs do XUI original
+
+Um LB instalado pelo método oficial do XUI e um LB instalado por aqui funcionam
+lado a lado, sob o mesmo principal. Não é preciso migrar tudo de uma vez.
+
+Funciona porque o principal redireciona preservando o caminho original
+(`/live/usuario/senha/123.ts`) — que é o formato nativo do XUI — e escolhe o
+servidor lendo apenas `servers`, `streams_servers` e `lines_live`. Não existe
+marcador de versão: os dois tipos de LB são indistinguíveis para o roteamento, e
+como ambos registram as sessões em `lines_live`, o balanceamento por menor carga
+continua justo entre eles.
+
+Duas coisas a saber:
+
+- **No servidor principal não há convivência.** O `install.sh` substitui a
+  entrega dele por completo. O principal continua entregando os canais que você
+  atribuir a ele no painel, só que por este motor.
+- **O painel não mostra qual servidor roda qual versão.** É o que faz a mistura
+  funcionar, e o que atrapalha na hora de investigar um problema. Recursos fora
+  de escopo (legendas, MAG/Stalker, Enigma2) falham se o espectador cair num LB
+  deste motor e funcionariam num LB oficial.
+
 ## Operação
 
 ```bash
@@ -120,6 +142,8 @@ Fora de escopo, para não haver surpresa:
 - Bloqueio por país ou operadora
 - Autenticação de dispositivos MAG/Stalker e Enigma2
 - Detecção de restream
-- Playlist criptografada — a instalação desliga `encrypt_playlist`, porque o
+- Playlist criptografada — o `install.sh` desliga `encrypt_playlist`, porque o
   formato com token não é reconhecido por este motor. O controle de acesso
-  continua por usuário e senha.
+  continua por usuário e senha. Se a opção for religada depois, o `deploy-lb.sh`
+  **avisa mas não altera**: é uma configuração global do painel, e quem manda
+  nela é você.
