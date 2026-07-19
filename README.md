@@ -53,11 +53,28 @@ Variações:
 ```bash
 ./deploy-lb.sh root@10.0.0.5:2222 'senha'   # porta SSH diferente
 ./deploy-lb.sh root@10.0.0.5                # autenticação por chave
-./deploy-lb.sh root@10.0.0.5 'senha' 3      # força o server-id
 ```
 
 Por último, **atribua os canais ao novo servidor no painel**. É isso que faz o
 principal começar a mandar espectadores para ele.
+
+### Atualizar ou reinstalar um LB
+
+O mesmo comando:
+
+```bash
+./deploy-lb.sh root@10.0.0.5 'senha'
+```
+
+Ele envia o binário atual, reinstala e reinicia. Nada é duplicado, então rodar
+de novo é seguro — é assim que se leva uma versão nova para os LBs.
+
+O `server-id` é lido do cadastro do XUI no próprio destino. Só se essa detecção
+falhar é que você precisa informá-lo:
+
+```bash
+./deploy-lb.sh root@10.0.0.5 'senha' 3
+```
 
 ## Como o tráfego é distribuído
 

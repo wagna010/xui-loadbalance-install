@@ -1,10 +1,18 @@
 #!/bin/bash
-# Instala o LB2 em um servidor novo, do começo ao fim. Rodar no PRINCIPAL.
+# Instala o LB2 em um servidor, do começo ao fim. Rodar no PRINCIPAL.
 #
-#   ./deploy-lb.sh root@10.0.0.5 'senha-ssh'
-#   ./deploy-lb.sh root@10.0.0.5:2222 'senha-ssh'
-#   ./deploy-lb.sh root@10.0.0.5            # usa chave SSH, sem senha
-#   ./deploy-lb.sh root@10.0.0.5 'senha' 3  # forca o server-id 3
+#   ./deploy-lb.sh root@10.0.0.5 'senha-ssh'       # instalar ou reinstalar
+#   ./deploy-lb.sh root@10.0.0.5:2222 'senha-ssh'  # porta SSH diferente
+#   ./deploy-lb.sh root@10.0.0.5                   # autenticacao por chave
+#
+# Rodar de novo no mesmo servidor atualiza o binario e reinstala. Nada e
+# duplicado, entao e assim que se atualiza um LB para uma versao nova.
+#
+# O server-id vem do cadastro do XUI no proprio destino
+# (/home/xui/config/config.ini). Se essa deteccao falhar ou trouxer o id
+# errado, informe o certo como terceiro argumento:
+#
+#   ./deploy-lb.sh root@10.0.0.5 'senha' 3
 #
 # O XUI ja precisa estar instalado no servidor de destino: e ele quem roda o
 # ffmpeg dos canais e cria /home/xui/content/streams, que o LB2 le.
@@ -32,7 +40,7 @@ falha() { echo "ERRO: $*" >&2; exit 1; }
 passo() { echo; echo "── $* ──"; }
 
 if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ] || [ $# -lt 1 ]; then
-    sed -n '2,12p' "$0" | sed 's/^# \?//'
+    sed -n '2,18p' "$0" | sed 's/^# \?//'
     exit 0
 fi
 
