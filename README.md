@@ -51,40 +51,33 @@ pasta do `git clone` pode ser apagada:
 
 ## Adicionar um LB
 
-Instale o XUI na máquina que vai ser o LB — é ele que roda o ffmpeg dos canais e
-cria `/home/xui/content/streams`, de onde este motor lê.
+**1. Instale o XUI na máquina do LB**, como load balancer.
 
-Depois, **um comando no servidor principal**:
+Não é opcional: é o ffmpeg do XUI que captura o canal e escreve os segmentos em
+`/home/xui/content/streams`, de onde este motor lê. Cada LB roda o próprio
+ffmpeg dos canais atribuídos a ele. É essa instalação também que cadastra o
+servidor no painel e gera o id.
+
+**2. Um comando no servidor principal**, com o id que o painel mostra em
+**Servers**:
 
 ```bash
 cd /home/xui/loadbalance
-./deploy-lb.sh root@10.0.0.5 'senha-ssh'
+./deploy-lb.sh root@10.0.0.5 'senha-ssh' 3
 ```
-
-Ele cadastra o servidor no painel sozinho, com o próximo id livre, e instala.
-Não é preciso criar nada em **Servers** antes — o painel do XUI não oferece essa
-opção sem instalar a versão antiga junto.
-
-Rodar de novo não duplica: o script procura um servidor com aquele IP e
-reaproveita o cadastro se encontrar.
 
 Variações:
 
 ```bash
-./deploy-lb.sh root@10.0.0.5 'senha' 3        # usa o id 3, já cadastrado
-./deploy-lb.sh root@10.0.0.5:2222 'senha'     # porta SSH diferente
-./deploy-lb.sh root@10.0.0.5 ''               # autenticação por chave
+./deploy-lb.sh root@10.0.0.5:2222 'senha' 3   # porta SSH diferente
+./deploy-lb.sh root@10.0.0.5 '' 3             # autenticação por chave
 ```
 
-Informe o id quando o cadastro tiver outro endereço (IP privado, domínio) ou
-quando a máquina do LB tiver mudado de lugar — aí é o id que diz qual servidor
-você está reinstalando.
+**3. Atribua os canais ao novo servidor no painel.** É isso que faz o principal
+começar a mandar espectadores para ele.
 
-O cadastro criado vem com limite de 1000 clientes; ajuste em **Servers** se
-precisar.
-
-Por último, **atribua os canais ao novo servidor no painel**. É isso que faz o
-principal começar a mandar espectadores para ele.
+O XUI no LB não vira legado: o ffmpeg dele continua sendo peça essencial. O que
+sai de cena é o caminho PHP que entregava vídeo ao espectador — o gargalo.
 
 ### Atualizar, reinstalar ou trocar a máquina
 
