@@ -20,13 +20,19 @@ limite por linha e troca de canal funcionando.
 
 ## Instalar no servidor principal
 
-Com o XUI One já instalado e funcionando:
+Com o XUI One já instalado e funcionando, como root:
 
 ```bash
+cd /tmp
 git clone https://github.com/wagna010/xui-loadbalance-install.git
 cd xui-loadbalance-install
+chmod +x install.sh
 ./install.sh
 ```
+
+Roda do `/tmp` porque essa pasta é descartável — a instalação copia tudo o que
+precisa para `/home/xui/loadbalance`, e o clone pode ser apagado depois. O
+`chmod` é só garantia: os scripts já vêm com permissão de execução.
 
 O script descobre o `server_id` pelo cadastro do próprio XUI, cria o usuário do
 banco, instala o serviço, aponta o nginx e confere que subiu.
