@@ -36,24 +36,36 @@ não fica quebrado pela metade.
 
 ## Adicionar um LB
 
-Dois passos no painel do XUI, uma vez por LB:
+Instale o XUI na máquina que vai ser o LB — é ele que roda o ffmpeg dos canais e
+cria `/home/xui/content/streams`, de onde este motor lê.
 
-1. Cadastrar o servidor em **Servers** (isso gera o id).
-2. Instalar o XUI nesse servidor, como LB. É o XUI que roda o ffmpeg dos canais
-   e cria `/home/xui/content/streams`, de onde este motor lê.
-
-Depois, **um comando no servidor principal**, informando o id do servidor:
+Depois, **um comando no servidor principal**:
 
 ```bash
-./deploy-lb.sh root@10.0.0.5 'senha-ssh' 3
+./deploy-lb.sh root@10.0.0.5 'senha-ssh'
 ```
+
+Ele cadastra o servidor no painel sozinho, com o próximo id livre, e instala.
+Não é preciso criar nada em **Servers** antes — o painel do XUI não oferece essa
+opção sem instalar a versão antiga junto.
+
+Rodar de novo não duplica: o script procura um servidor com aquele IP e
+reaproveita o cadastro se encontrar.
 
 Variações:
 
 ```bash
-./deploy-lb.sh root@10.0.0.5:2222 'senha' 3   # porta SSH diferente
-./deploy-lb.sh root@10.0.0.5 '' 3             # autenticação por chave
+./deploy-lb.sh root@10.0.0.5 'senha' 3        # usa o id 3, já cadastrado
+./deploy-lb.sh root@10.0.0.5:2222 'senha'     # porta SSH diferente
+./deploy-lb.sh root@10.0.0.5 ''               # autenticação por chave
 ```
+
+Informe o id quando o cadastro tiver outro endereço (IP privado, domínio) ou
+quando a máquina do LB tiver mudado de lugar — aí é o id que diz qual servidor
+você está reinstalando.
+
+O cadastro criado vem com limite de 1000 clientes; ajuste em **Servers** se
+precisar.
 
 Por último, **atribua os canais ao novo servidor no painel**. É isso que faz o
 principal começar a mandar espectadores para ele.
