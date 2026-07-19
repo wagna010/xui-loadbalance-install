@@ -91,8 +91,8 @@ O endpoint de métricas responde apenas de localhost.
 ```
 
 Restaura o nginx do backup e remove o serviço. Os PHPs originais do XUI nunca
-são apagados, então a volta é imediata. Canais, usuários e o painel não são
-tocados.
+são apagados, então a volta é imediata. Canais, usuários e as configurações do
+painel não são tocados.
 
 ## Requisitos
 

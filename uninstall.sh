@@ -55,12 +55,11 @@ if mysql -N -e "SELECT 1" >/dev/null 2>&1; then
         | mysql 2>/dev/null || true
     mysql -e "FLUSH PRIVILEGES;" 2>/dev/null || true
     echo "  ok  usuario lb2 do banco removido"
-
-    # O motor original usa playlist com token; sem religar isso, os clientes
-    # continuariam recebendo URLs em formato que ele nao espera.
-    mysql xui -e "UPDATE settings SET encrypt_playlist=1;" 2>/dev/null || true
-    echo "  ok  playlist criptografada religada (padrao do XUI)"
 fi
+
+# encrypt_playlist fica como esta. Religar seria mexer numa configuracao do
+# painel que o administrador pode ter escolhido, e o motor original funciona
+# com ela desligada.
 
 echo
 echo "Pronto. O XUI voltou a entregar o conteudo pelo motor original."
