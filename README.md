@@ -43,6 +43,7 @@ pasta do `git clone` pode ser apagada:
 ├── config.json      credenciais do banco (modo 600)
 ├── deploy-lb.sh     adicionar/atualizar um LB
 ├── uninstall.sh     voltar ao motor original
+├── backup/          nginx.conf de antes da instalação
 └── lib/             usados pelos scripts acima
 ```
 
@@ -154,6 +155,9 @@ Vale para o principal e para cada LB — o desinstalador fica instalado em todos
 Restaura o nginx do backup e remove o serviço. Os PHPs originais do XUI nunca
 são apagados, então a volta é imediata. Canais, usuários e as configurações do
 painel não são tocados.
+
+A pasta `backup/` fica — é a única cópia do `nginx.conf` anterior à instalação,
+e apagá-la junto seria uma porta de mão única. Remova quando quiser.
 
 ## Requisitos
 

@@ -131,7 +131,7 @@ fi
 
 # ── 6. nginx: backup, patch, valida a sintaxe, so entao recarrega ───────────
 echo "[6/7] Apontando o nginx para o LB2..."
-BACKUP="/root/backup-motor-oficial-$(date +%Y%m%d-%H%M%S)"
+BACKUP="$DEST/backup/backup-motor-oficial-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$BACKUP"
 cp "$NGINX_CONF" "$BACKUP/nginx.conf"
 [ -d /home/xui/www/stream ] && cp -r /home/xui/www/stream "$BACKUP/" 2>/dev/null || true
