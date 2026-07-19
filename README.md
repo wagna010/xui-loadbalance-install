@@ -42,39 +42,32 @@ Dois passos no painel do XUI, uma vez por LB:
 2. Instalar o XUI nesse servidor, como LB. É o XUI que roda o ffmpeg dos canais
    e cria `/home/xui/content/streams`, de onde este motor lê.
 
-Depois, **um comando no servidor principal**:
+Depois, **um comando no servidor principal**, informando o id do servidor:
 
 ```bash
-./deploy-lb.sh root@10.0.0.5 'senha-ssh'
+./deploy-lb.sh root@10.0.0.5 'senha-ssh' 3
 ```
 
 Variações:
 
 ```bash
-./deploy-lb.sh root@10.0.0.5:2222 'senha'   # porta SSH diferente
-./deploy-lb.sh root@10.0.0.5                # autenticação por chave
+./deploy-lb.sh root@10.0.0.5:2222 'senha' 3   # porta SSH diferente
+./deploy-lb.sh root@10.0.0.5 '' 3             # autenticação por chave
 ```
 
 Por último, **atribua os canais ao novo servidor no painel**. É isso que faz o
 principal começar a mandar espectadores para ele.
 
-### Atualizar ou reinstalar um LB
+### Atualizar, reinstalar ou trocar a máquina
 
-O mesmo comando:
+Sempre o mesmo comando. Ele envia o binário atual, reinstala e reinicia; nada é
+duplicado, então rodar de novo é seguro.
 
-```bash
-./deploy-lb.sh root@10.0.0.5 'senha'
-```
-
-Ele envia o binário atual, reinstala e reinicia. Nada é duplicado, então rodar
-de novo é seguro — é assim que se leva uma versão nova para os LBs.
-
-O `server-id` é lido do cadastro do XUI no próprio destino. Só se essa detecção
-falhar é que você precisa informá-lo:
-
-```bash
-./deploy-lb.sh root@10.0.0.5 'senha' 3
-```
+Ao trocar a máquina de um servidor, instale no endereço novo com o mesmo id e
+**atualize o IP em Servers, no painel** — é por esse campo que o principal
+monta o redirect. O script avisa quando o endereço cadastrado não bate com a
+máquina onde ele acabou de instalar, mas não altera o cadastro: quem manda no
+painel é você.
 
 ## Como o tráfego é distribuído
 
