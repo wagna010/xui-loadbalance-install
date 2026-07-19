@@ -84,6 +84,24 @@ cat > "$DEST/config.json" <<JSON
 JSON
 chmod 600 "$DEST/config.json"
 
+# As ferramentas de operacao ficam junto do binario. Sem isso elas so existiriam
+# na pasta onde o pacote foi baixado — que o admin apaga, e depois nao sabe de
+# onde rodar o proximo comando.
+mkdir -p "$DEST/lib"
+install -m 755 "$HERE/install-lb.sh"  "$DEST/lib/install-lb.sh"
+install -m 755 "$HERE/patch_nginx.py" "$DEST/lib/patch_nginx.py"
+install -m 644 "$HERE/lb2.service"    "$DEST/lib/lb2.service"
+
+# No pacote completo o uninstall.sh esta na raiz; instalando um LB ele chega
+# junto dos demais. LB2_FILES aponta para a raiz quando o install.sh e quem chama.
+PKG="${LB2_FILES:-$HERE}"
+for ORIGEM in "$PKG/uninstall.sh" "$HERE/uninstall.sh"; do
+    if [ -f "$ORIGEM" ]; then
+        install -m 755 "$ORIGEM" "$DEST/uninstall.sh"
+        break
+    fi
+done
+
 # ── 4. Servico ──────────────────────────────────────────────────────────────
 echo "[4/7] Instalando o servico..."
 install -m 644 "$HERE/lb2.service" "$UNIT"

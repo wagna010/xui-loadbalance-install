@@ -146,9 +146,12 @@ passo "4/5  Enviando e instalando"
 for f in install-lb.sh lb2.service patch_nginx.py; do
     [ -f "$LIB/$f" ] || falha "$f nao encontrado em $LIB"
 done
+[ -f "$HERE/uninstall.sh" ] || falha "uninstall.sh nao encontrado em $HERE"
 
 remoto "mkdir -p ${REMOTE_DIR}"
-enviar "$BIN" "$LIB/install-lb.sh" "$LIB/lb2.service" "$LIB/patch_nginx.py"
+# O uninstall.sh vai junto para ficar instalado no LB: quem precisa reverter
+# esta la, no servidor, e nao aqui.
+enviar "$BIN" "$LIB/install-lb.sh" "$LIB/lb2.service" "$LIB/patch_nginx.py" "$HERE/uninstall.sh"
 remoto "chmod +x ${REMOTE_DIR}/install-lb.sh"
 remoto "cd ${REMOTE_DIR} && ./install-lb.sh ${SERVER_ID} ${TOKEN}" \
     || falha "a instalacao falhou no destino (a saida acima mostra em qual passo)."

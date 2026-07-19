@@ -52,21 +52,30 @@ TOKEN="$(bash "$HERE/lib/grant-lb.sh" | grep -oE '^  [A-Za-z0-9+/=]{40,}$' | tr 
 echo
 LB2_FILES="$HERE" bash "$HERE/lib/install-lb.sh" "$SERVER_ID" "$TOKEN"
 
-# ── 3. Pronto ───────────────────────────────────────────────────────────────
+# ── 3. Ferramentas que so o principal usa ───────────────────────────────────
+# Ficam junto do binario para que a pasta do git clone possa ser apagada.
+install -m 755 "$HERE/deploy-lb.sh"     /home/xui/loadbalance/deploy-lb.sh
+install -m 755 "$HERE/lib/grant-lb.sh"  /home/xui/loadbalance/lib/grant-lb.sh
+
+# ── 4. Pronto ───────────────────────────────────────────────────────────────
 cat <<FIM
 
 ╔══════════════════════════════════════════════════════╗
 ║   Instalado                                          ║
 ╚══════════════════════════════════════════════════════╝
 
+  Tudo fica em /home/xui/loadbalance — esta pasta do git clone
+  pode ser apagada.
+
   Metricas:  curl -s http://127.0.0.1:9000/lb2/stats
   Log:       tail -f /var/log/lb2.log
   Servico:   systemctl status lb2
 
   Para adicionar um LB:
+    cd /home/xui/loadbalance
     ./deploy-lb.sh root@IP-DO-LB 'senha-ssh'
 
   Para voltar ao XUI original:
-    ./uninstall.sh
+    /home/xui/loadbalance/uninstall.sh
 
 FIM

@@ -34,6 +34,20 @@ banco, instala o serviço, aponta o nginx e confere que subiu.
 Se algo der errado no meio, ele para **antes** de mexer no nginx — o servidor
 não fica quebrado pela metade.
 
+Terminada a instalação, tudo passa a viver em **`/home/xui/loadbalance`** e a
+pasta do `git clone` pode ser apagada:
+
+```
+/home/xui/loadbalance/
+├── lb2              o serviço
+├── config.json      credenciais do banco (modo 600)
+├── deploy-lb.sh     adicionar/atualizar um LB
+├── uninstall.sh     voltar ao motor original
+└── lib/             usados pelos scripts acima
+```
+
+É de lá que os comandos seguintes são rodados.
+
 ## Adicionar um LB
 
 Instale o XUI na máquina que vai ser o LB — é ele que roda o ffmpeg dos canais e
@@ -42,6 +56,7 @@ cria `/home/xui/content/streams`, de onde este motor lê.
 Depois, **um comando no servidor principal**:
 
 ```bash
+cd /home/xui/loadbalance
 ./deploy-lb.sh root@10.0.0.5 'senha-ssh'
 ```
 
@@ -131,8 +146,10 @@ O endpoint de métricas responde apenas de localhost.
 ## Voltar ao XUI original
 
 ```bash
-./uninstall.sh
+/home/xui/loadbalance/uninstall.sh
 ```
+
+Vale para o principal e para cada LB — o desinstalador fica instalado em todos.
 
 Restaura o nginx do backup e remove o serviço. Os PHPs originais do XUI nunca
 são apagados, então a volta é imediata. Canais, usuários e as configurações do

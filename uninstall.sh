@@ -18,6 +18,17 @@ fi
 
 [ "$(id -u)" -eq 0 ] || falha "rode como root."
 
+# Este script fica instalado dentro de /home/xui/loadbalance, que ele mesmo
+# apaga no passo 3. Apagar o proprio arquivo no meio da execucao deixa o bash
+# lendo um arquivo que nao existe mais, entao seguimos a partir de uma copia.
+AQUI="$(cd "$(dirname "$0")" && pwd)"
+if [ "$AQUI" = "/home/xui/loadbalance" ] && [ -z "${LB2_UNINSTALL_RELOCADO:-}" ]; then
+    COPIA="$(mktemp /tmp/lb2-uninstall-XXXXXX.sh)"
+    cp "$0" "$COPIA"
+    chmod +x "$COPIA"
+    LB2_UNINSTALL_RELOCADO=1 exec "$COPIA" "$@"
+fi
+
 echo "Voltando ao motor original do XUI..."
 
 # ── 1. Para o servico ───────────────────────────────────────────────────────
