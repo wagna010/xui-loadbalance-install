@@ -20,8 +20,8 @@ fi
 [ "$(id -u)" -eq 0 ] || falha "rode como root."
 
 # Este script fica instalado dentro de /home/xui/loadbalance, que ele mesmo
-# apaga no passo 3. Apagar o proprio arquivo no meio da execucao deixa o bash
-# lendo um arquivo que nao existe mais, entao seguimos a partir de uma copia.
+# apaga no fim. Apagar o proprio arquivo no meio da execucao deixa o bash lendo
+# um arquivo que nao existe mais, entao seguimos a partir de uma copia.
 AQUI="$(cd "$(dirname "$0")" && pwd)"
 if [ "$AQUI" = "/home/xui/loadbalance" ] && [ -z "${LB2_UNINSTALL_RELOCADO:-}" ]; then
     COPIA="$(mktemp /tmp/lb2-uninstall-XXXXXX.sh)"
@@ -32,44 +32,59 @@ fi
 
 echo "Voltando ao motor original do XUI..."
 
-# ── 1. Para o servico ───────────────────────────────────────────────────────
+# ── 1. Acha e valida o backup ANTES de mexer em qualquer coisa ───────────────
+# Restaurar o nginx e a parte que importa: sem os rewrites originais o servidor
+# para de entregar. Por isso localizamos e VALIDAMOS o backup primeiro e
+# abortamos se algo estiver errado — em vez de remover o servico e so depois
+# descobrir que nao da para restaurar, deixando a entrega no chao.
+#
+# Ate a versao anterior os backups iam para /root; hoje ficam em $DEST/backup.
+# Procuramos nos dois lugares e usamos o MAIS ANTIGO (o nome e a data): e ele que
+# guarda o nginx.conf de antes de qualquer instalacao do LB2.
+#
+# nullglob faz um padrao sem correspondencia sumir em vez de sobrar literal —
+# sem isso, com /root vazio, o antigo `ls` do glob literal falhava e o
+# `set -e`/`pipefail` matava o script bem aqui, apos remover o servico.
+shopt -s nullglob
+CANDIDATOS=( /root/backup-motor-oficial-*/ "$DEST"/backup/backup-motor-oficial-*/ )
+shopt -u nullglob
+
+BACKUP=""
+if [ ${#CANDIDATOS[@]} -gt 0 ]; then
+    # Ordena por nome de pasta (data). A escolha do primeiro e feita com
+    # expansao de parametro, nao `head`, para nao arriscar SIGPIPE sob pipefail.
+    ORDENADOS="$(for d in "${CANDIDATOS[@]}"; do d="${d%/}"; echo "$(basename "$d")|$d"; done | sort)"
+    PRIMEIRA="${ORDENADOS%%$'\n'*}"
+    BACKUP="${PRIMEIRA#*|}"
+fi
+
+[ -n "$BACKUP" ] && [ -f "$BACKUP/nginx.conf" ] \
+    || falha "nenhum backup do nginx em $DEST/backup/ nem em /root/. Abortei sem mexer no servico para nao derrubar a entrega; restaure o nginx.conf a mao se precisar."
+
+if ! /home/xui/bin/nginx/sbin/nginx -t -c "$BACKUP/nginx.conf" -p /home/xui/bin/nginx/ >/dev/null 2>&1; then
+    falha "o nginx.conf do backup ($BACKUP) esta invalido. Abortei sem mexer no servico."
+fi
+echo "  ok  backup validado: $BACKUP"
+
+# ── 2. Para o servico ───────────────────────────────────────────────────────
 systemctl stop lb2 2>/dev/null || true
 systemctl disable lb2 2>/dev/null || true
 rm -f /etc/systemd/system/lb2.service
 systemctl daemon-reload
 echo "  ok  servico removido"
 
-# ── 2. Restaura o nginx ─────────────────────────────────────────────────────
-# Sem o nginx voltar aos rewrites originais o servidor fica sem entregar nada,
-# entao esta e a parte que realmente importa.
-# Ate a versao anterior os backups iam para /root; agora ficam junto do resto.
-# Procuramos nos dois lugares e usamos o MAIS ANTIGO: e ele que guarda o
-# nginx.conf original, de antes de qualquer instalacao do LB2. Ordenamos pelo
-# nome da pasta (que e a data), nao pelo caminho, senao o diretorio de origem
-# e que decidiria a ordem.
-BACKUP="$(
-    ls -1d /root/backup-motor-oficial-*/ "$DEST"/backup/backup-motor-oficial-*/ 2>/dev/null \
-    | sed 's|/$||' \
-    | while read -r d; do echo "$(basename "$d")|$d"; done \
-    | sort | head -1 | cut -d'|' -f2
-)"
-
-if [ -n "$BACKUP" ] && [ -f "$BACKUP/nginx.conf" ]; then
-    chmod u+w "$NGINX_CONF" 2>/dev/null || true
-    cp "$BACKUP/nginx.conf" "$NGINX_CONF"
-    if /home/xui/bin/nginx/sbin/nginx -t -c "$NGINX_CONF" -p /home/xui/bin/nginx/ >/dev/null 2>&1; then
-        /home/xui/bin/nginx/sbin/nginx -s reload -c "$NGINX_CONF" -p /home/xui/bin/nginx/ 2>/dev/null || true
-        echo "  ok  nginx restaurado de ${BACKUP}"
-    else
-        falha "o nginx.conf restaurado ficou invalido. Confira $BACKUP/nginx.conf manualmente."
-    fi
+# ── 3. Restaura o nginx ─────────────────────────────────────────────────────
+chmod u+w "$NGINX_CONF" 2>/dev/null || true
+cp "$BACKUP/nginx.conf" "$NGINX_CONF"
+if /home/xui/bin/nginx/sbin/nginx -t -c "$NGINX_CONF" -p /home/xui/bin/nginx/ >/dev/null 2>&1; then
+    /home/xui/bin/nginx/sbin/nginx -s reload -c "$NGINX_CONF" -p /home/xui/bin/nginx/ 2>/dev/null || true
+    echo "  ok  nginx restaurado de ${BACKUP}"
 else
-    echo "  !!  nenhum backup encontrado em $DEST/backup/ nem em /root/"
-    echo "      remova as linhas do bloco 'LB2' e o 'upstream lb2' de $NGINX_CONF a mao,"
-    echo "      e recoloque os rewrites de streaming do XUI."
+    # Nao deveria acontecer: o backup foi validado no passo 1.
+    falha "o nginx.conf restaurado ficou invalido. Confira $BACKUP/nginx.conf a mao."
 fi
 
-# ── 3. Arquivos e usuario do banco ──────────────────────────────────────────
+# ── 4. Arquivos e usuario do banco ──────────────────────────────────────────
 # O backup fica: e a unica copia do nginx.conf original, e apagar a rede de
 # seguranca junto com o que ela protege seria uma porta de mao unica.
 find "$DEST" -mindepth 1 -maxdepth 1 ! -name backup -exec rm -rf {} + 2>/dev/null || true
