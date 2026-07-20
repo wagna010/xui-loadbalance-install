@@ -111,27 +111,37 @@ principal, então nada muda para quem assiste.
 os LBs responsáveis por um canal caírem, o canal fica fora do ar — o tráfego
 nunca é desviado para o principal por conta própria.
 
-## Conviver com LBs do XUI original
+## Um esquema só: LB2 **ou** oficial, nunca misturado
 
-Um LB instalado pelo método oficial do XUI e um LB instalado por aqui funcionam
-lado a lado, sob o mesmo principal. Não é preciso migrar tudo de uma vez.
+**Não dá para misturar um LB oficial do XUI com um LB2 sob o mesmo principal.**
+Ou o principal e todos os LBs são LB2, ou tudo fica no esquema oficial. Só um dos
+dois funciona por vez.
 
-Funciona porque o principal redireciona preservando o caminho original
-(`/live/usuario/senha/123.ts`) — que é o formato nativo do XUI — e escolhe o
-servidor lendo apenas `servers`, `streams_servers` e `lines_live`. Não existe
-marcador de versão: os dois tipos de LB são indistinguíveis para o roteamento, e
-como ambos registram as sessões em `lines_live`, o balanceamento por menor carga
-continua justo entre eles.
+O motivo é a URL de entrega:
 
-Duas coisas a saber:
+- **LB oficial**: só entende URLs **por token** — `/auth/<token>`, `/hls/<token>`,
+  `/vauth/<token>`. O nginx dele não tem rota para `/live/usuario/senha/123.ts`.
+- **LB2**: o principal redireciona preservando o caminho **puro**
+  `/live/usuario/senha/123.ts` (e o `install.sh` desliga `encrypt_playlist`,
+  então é esse o formato que sai).
 
-- **No servidor principal não há convivência.** O `install.sh` substitui a
-  entrega dele por completo. O principal continua entregando os canais que você
-  atribuir a ele no painel, só que por este motor.
-- **O painel não mostra qual servidor roda qual versão.** É o que faz a mistura
-  funcionar, e o que atrapalha na hora de investigar um problema. Recursos fora
-  de escopo (legendas, MAG/Stalker, Enigma2) falham se o espectador cair num LB
-  deste motor e funcionariam num LB oficial.
+Quando o principal em LB2 manda um espectador para um LB oficial, o LB oficial
+recebe `/live/...`, não reconhece e responde **404** — o canal não abre. Vale o
+inverso: um principal oficial redireciona por token, e o LB2 não decodifica token.
+Os dois motores não se entendem na hora do redirect.
+
+**Consequência prática — ao adotar o LB2, converta a frota inteira.** Depois do
+`install.sh` no principal, rode o `deploy-lb.sh` em **cada** LB para convertê-lo:
+
+```bash
+cd /home/xui/loadbalance
+./deploy-lb.sh root@IP-DO-LB 'senha-ssh' <id-do-LB>
+```
+
+Um LB que ficar no esquema oficial vai dar 404 e ficar sem receber ninguém. Se
+você precisa de recursos que o LB2 não faz (MAG/Stalker e timeshift por token,
+legendas), a frota inteira tem de permanecer oficial — o LB2 não é opção para
+esses casos. Para voltar um servidor ao motor original, use o `uninstall.sh`.
 
 ## Operação
 
