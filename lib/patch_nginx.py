@@ -81,6 +81,15 @@ PROXY_BLOCK = """
 """
 
 
+def anchor_after(conf, pattern, insert):
+    """Insere `insert` logo após a primeira linha que casa com `pattern`.
+    Devolve None quando a âncora não existe, para o chamador tentar a próxima."""
+    m = re.search(pattern, conf, re.MULTILINE)
+    if not m:
+        return None
+    return conf[:m.end()] + insert + conf[m.end():]
+
+
 def main():
     with open(CONF, "r", encoding="utf-8") as fh:
         conf = fh.read()
@@ -97,25 +106,31 @@ def main():
             continue
         kept.append(line)
     conf = "".join(kept)
-    print(f"Rewrites de streaming removidos: {removed}")
 
-    # O upstream tem que ficar dentro do bloco http, antes do server.
-    marker = "    include balance.conf;\n"
-    if marker not in conf:
-        print("ERRO: não encontrei 'include balance.conf' para ancorar o upstream", file=sys.stderr)
+    # O upstream só precisa estar dentro do bloco http. No principal ancoramos no
+    # 'include balance.conf;'; um LB não tem esse include (balance.conf é a config
+    # de balanceamento que só o principal usa), então caímos para logo após a
+    # abertura do 'http {', que existe em qualquer nginx.conf do XUI.
+    novo = anchor_after(conf, r"^[ \t]*include[ \t]+balance\.conf;[ \t]*\n", UPSTREAM)
+    if novo is None:
+        novo = anchor_after(conf, r"^[ \t]*http[ \t]*\{[ \t]*\n", UPSTREAM)
+    if novo is None:
+        print("ERRO: não achei onde ancorar o upstream (nem 'include balance.conf;' nem 'http {').", file=sys.stderr)
         return 1
-    conf = conf.replace(marker, marker + UPSTREAM, 1)
+    conf = novo
 
-    # As locations entram logo após o root do server, antes das outras locations.
-    anchor = "        root /home/xui/www/;\n"
-    if anchor not in conf:
-        print("ERRO: não encontrei a diretiva root do server", file=sys.stderr)
+    # As locations entram logo após o root do server que serve o streaming.
+    # Tolerante a indentação (principal e LB podem diferir).
+    novo = anchor_after(conf, r"^[ \t]*root[ \t]+/home/xui/www/;[ \t]*\n", PROXY_BLOCK)
+    if novo is None:
+        print("ERRO: não encontrei a diretiva 'root /home/xui/www/;' do server.", file=sys.stderr)
         return 1
-    conf = conf.replace(anchor, anchor + PROXY_BLOCK, 1)
+    conf = novo
 
     with open(CONF, "w", encoding="utf-8") as fh:
         fh.write(conf)
 
+    print(f"Rewrites de streaming removidos: {removed}")
     print("nginx.conf atualizado para usar o LB2.")
     return 0
 
