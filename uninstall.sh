@@ -83,9 +83,16 @@ systemctl daemon-reload
 echo "  ok  servico removido"
 
 # ── 3. Restaura o nginx ─────────────────────────────────────────────────────
-# O staging ja foi validado no lugar certo; so falta coloca-lo no nome real.
+# O staging ja foi validado no lugar certo; so falta aplicar o conteudo.
+# "cp" (nao "mv") de proposito: cp sobrescreve o CONTEUDO do arquivo existente,
+# preservando dono/permissao do nginx.conf ja instalado; "mv" trocaria o inode
+# inteiro pelo do staging (criado por este script, dono root), e o nginx roda
+# como usuario nao-root (ex.: "user xui;") — um nginx.conf dono de root fica
+# ilegivel pra ele, e todo reload futuro falha silenciosamente com os workers
+# antigos presos no ar. Confirmado na pratica: cp preserva, mv nao.
 chmod u+w "$NGINX_CONF" 2>/dev/null || true
-mv "$STAGING" "$NGINX_CONF"
+cp "$STAGING" "$NGINX_CONF"
+rm -f "$STAGING"
 if /home/xui/bin/nginx/sbin/nginx -t -c "$NGINX_CONF" -p /home/xui/bin/nginx/ >/dev/null 2>&1; then
     /home/xui/bin/nginx/sbin/nginx -s reload -c "$NGINX_CONF" -p /home/xui/bin/nginx/ 2>/dev/null || true
     echo "  ok  nginx restaurado de ${BACKUP}"

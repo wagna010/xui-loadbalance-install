@@ -131,20 +131,29 @@ fi
 
 # ── 6. nginx: backup, patch, valida a sintaxe, so entao recarrega ───────────
 echo "[6/7] Apontando o nginx para o LB2..."
-BACKUP="$DEST/backup/backup-motor-oficial-$(date +%Y%m%d-%H%M%S)"
-mkdir -p "$BACKUP"
-cp "$NGINX_CONF" "$BACKUP/nginx.conf"
-[ -d /home/xui/www/stream ] && cp -r /home/xui/www/stream "$BACKUP/" 2>/dev/null || true
+if grep -q 'upstream lb2' "$NGINX_CONF"; then
+    # Reinstalacao/atualizacao: o nginx ja aponta pro LB2, nada muda nele.
+    # Sem este atalho, cada re-execucao criaria um backup novo do estado JA
+    # PATCHADO — inutil como copia de seguranca, e o uninstall so precisa de
+    # UM backup: o pristino, feito na primeira instalacao.
+    echo "      nginx ja aponta para o LB2, nada a fazer."
+else
+    BACKUP="$DEST/backup/backup-motor-oficial-$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$BACKUP"
+    cp "$NGINX_CONF" "$BACKUP/nginx.conf"
+    [ -d /home/xui/www/stream ] && cp -r /home/xui/www/stream "$BACKUP/" 2>/dev/null || true
 
-chmod u+w "$NGINX_CONF"
-python3 "$HERE/patch_nginx.py"
+    chmod u+w "$NGINX_CONF"
+    python3 "$HERE/patch_nginx.py"
 
-if ! /home/xui/bin/nginx/sbin/nginx -t -c "$NGINX_CONF" -p /home/xui/bin/nginx/ >/dev/null 2>&1; then
-    cp "$BACKUP/nginx.conf" "$NGINX_CONF"
-    falha "a configuracao do nginx ficou invalida; restaurei o backup de $BACKUP"
+    if ! /home/xui/bin/nginx/sbin/nginx -t -c "$NGINX_CONF" -p /home/xui/bin/nginx/ >/dev/null 2>&1; then
+        # cp (nao mv) preserva o dono/permissao do nginx.conf ja instalado.
+        cp "$BACKUP/nginx.conf" "$NGINX_CONF"
+        falha "a configuracao do nginx ficou invalida; restaurei o backup de $BACKUP"
+    fi
+    /home/xui/bin/nginx/sbin/nginx -s reload -c "$NGINX_CONF" -p /home/xui/bin/nginx/ 2>/dev/null || systemctl reload nginx 2>/dev/null || true
+    echo "      backup do estado anterior em $BACKUP"
 fi
-/home/xui/bin/nginx/sbin/nginx -s reload -c "$NGINX_CONF" -p /home/xui/bin/nginx/ 2>/dev/null || systemctl reload nginx 2>/dev/null || true
-echo "      backup do estado anterior em $BACKUP"
 
 # ── 7. Pronto ───────────────────────────────────────────────────────────────
 echo "[7/7] Conferindo..."
