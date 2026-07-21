@@ -61,7 +61,16 @@ fi
 [ -n "$BACKUP" ] && [ -f "$BACKUP/nginx.conf" ] \
     || falha "nenhum backup do nginx em $DEST/backup/ nem em /root/. Abortei sem mexer no servico para nao derrubar a entrega; restaure o nginx.conf a mao se precisar."
 
-if ! /home/xui/bin/nginx/sbin/nginx -t -c "$BACKUP/nginx.conf" -p /home/xui/bin/nginx/ >/dev/null 2>&1; then
+# O backup guarda so o nginx.conf, sem os arquivos vizinhos (mime.types etc.)
+# que ele referencia com caminho relativo. O nginx resolve um "include" relativo
+# a partir do diretorio do ARQUIVO passado em -c, nao do -p — entao validar o
+# backup no lugar onde ele esta sempre falharia com "mime.types nao encontrado",
+# mesmo com o conteudo correto. Por isso testamos uma copia colocada ao lado do
+# nginx.conf real, onde os vizinhos existem de verdade.
+STAGING="$(dirname "$NGINX_CONF")/.lb2-uninstall-staging.conf"
+cp "$BACKUP/nginx.conf" "$STAGING"
+if ! /home/xui/bin/nginx/sbin/nginx -t -c "$STAGING" -p /home/xui/bin/nginx/ >/dev/null 2>&1; then
+    rm -f "$STAGING"
     falha "o nginx.conf do backup ($BACKUP) esta invalido. Abortei sem mexer no servico."
 fi
 echo "  ok  backup validado: $BACKUP"
@@ -74,13 +83,14 @@ systemctl daemon-reload
 echo "  ok  servico removido"
 
 # ── 3. Restaura o nginx ─────────────────────────────────────────────────────
+# O staging ja foi validado no lugar certo; so falta coloca-lo no nome real.
 chmod u+w "$NGINX_CONF" 2>/dev/null || true
-cp "$BACKUP/nginx.conf" "$NGINX_CONF"
+mv "$STAGING" "$NGINX_CONF"
 if /home/xui/bin/nginx/sbin/nginx -t -c "$NGINX_CONF" -p /home/xui/bin/nginx/ >/dev/null 2>&1; then
     /home/xui/bin/nginx/sbin/nginx -s reload -c "$NGINX_CONF" -p /home/xui/bin/nginx/ 2>/dev/null || true
     echo "  ok  nginx restaurado de ${BACKUP}"
 else
-    # Nao deveria acontecer: o backup foi validado no passo 1.
+    # Nao deveria acontecer: o mesmo conteudo ja foi validado no passo 1.
     falha "o nginx.conf restaurado ficou invalido. Confira $BACKUP/nginx.conf a mao."
 fi
 
